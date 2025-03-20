@@ -317,7 +317,7 @@ const SearchBar = ({ onSubmit, classList, props }) => {
   });
   const formElement = createElement("form", {
     ...props,
-    classList: "w-525 h-36 flex items-center justify-between rounded-2xl border-2 px6-py16",
+    classList: "form-container",
     children: [input, iconBtn]
   });
   formElement.addEventListener("submit", (event) => {
@@ -328,7 +328,7 @@ const SearchBar = ({ onSubmit, classList, props }) => {
 };
 const createHeaderSection = () => {
   return createElement("section", {
-    classList: "flex flex-row items-center gap-250",
+    classList: "section-container",
     children: [
       IconButton({
         width: "117",
@@ -421,7 +421,7 @@ const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w220_and_h330_face";
 const DEFAULT_IMAGE_URL = "./images/no_image.png";
 const createRatingSection = (vote_average) => {
   return Box({
-    classList: ["flex", "gap-8"],
+    classList: ["movie-rate"],
     props: {
       children: [
         Img({
@@ -441,7 +441,7 @@ const createRatingSection = (vote_average) => {
 };
 const createDescriptionSection = (title, vote_average) => {
   return Box({
-    classList: ["flex", "flex-col", "gap-10"],
+    classList: ["movie-description"],
     props: {
       children: [
         createRatingSection(vote_average),
@@ -470,7 +470,7 @@ const MovieItem = ({
   poster_path
 }) => {
   return createElement("li", {
-    classList: "movie-item flex flex-col justify-start gap-10",
+    classList: "movie-item",
     children: [
       createMovieImage(title, poster_path),
       createDescriptionSection(title, vote_average)
