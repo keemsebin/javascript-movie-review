@@ -125,7 +125,7 @@ const STATUS_MESSAGE = {
 class HttpError extends Error {
   constructor(status) {
     if (!Object.hasOwnProperty.call(STATUS_MESSAGE, status)) {
-      throw new Error(`Invalid status code: ${status}`);
+      throw new Error(`에러가 발생했어요. ${status}`);
     }
     super(STATUS_MESSAGE[status]);
     __publicField(this, "status");
@@ -303,7 +303,7 @@ const IconButton = ({
 };
 const SearchBar = ({ onSubmit, classList, props }) => {
   const input = createElement("input", {
-    id: "search-input",
+    classList: "search-input",
     type: "text",
     placeholder: "검색어를 입력해주세요."
   });

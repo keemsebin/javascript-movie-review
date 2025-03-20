@@ -162,7 +162,7 @@ footer.footer p:not(:last-child) {
   margin-bottom: 8px;
 }
 
-#search-input {
+.search-input {
   background-color: transparent;
   border: none;
   outline: none;
@@ -170,8 +170,12 @@ footer.footer p:not(:last-child) {
   color: white;
 }
 
-#search-input::placeholder {
+.search-input::placeholder {
   color: white;
+}
+
+.search-input:focus {
+  background-color: transparent;
 }
 
 .loading-spinner {
