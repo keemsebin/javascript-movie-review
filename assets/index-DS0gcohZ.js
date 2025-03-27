@@ -283,41 +283,42 @@ const SessionStorage = {
     sessionStorage.setItem(storageKey, JSON.stringify(items));
   }
 };
-const STORAGE_KEY = "movie-ratings";
-class MovieRating {
-  constructor(movieId, movieName) {
-    __publicField(this, "movieId");
-    __publicField(this, "movieName");
-    this.movieId = movieId;
-    this.movieName = movieName;
+const _MovieRating = class _MovieRating {
+  hasRating(movieId) {
+    const storedData = SessionStorage.getItems(
+      _MovieRating.STORAGE_KEY
+    );
+    return storedData.some((item) => item.movieId === movieId);
   }
-  getRating() {
-    const storedData = SessionStorage.getItems(STORAGE_KEY);
-    const movieIndex = storedData.find((item) => item.movieId === this.movieId);
+  getRating(movieId) {
+    const storedData = SessionStorage.getItems(
+      _MovieRating.STORAGE_KEY
+    );
+    const movieIndex = storedData.find((item) => item.movieId === movieId);
     return movieIndex ? movieIndex.rate : null;
   }
-  setRating(rate) {
-    const storedData = SessionStorage.getItems(STORAGE_KEY);
-    const movieIndex = storedData.findIndex(
-      (item) => item.movieId === this.movieId
+  setRating(movieId, movieName, rate) {
+    const storedData = SessionStorage.getItems(
+      _MovieRating.STORAGE_KEY
     );
+    const movieIndex = storedData.findIndex((item) => item.movieId === movieId);
     if (movieIndex > -1) {
       storedData[movieIndex].rate = rate;
     }
-    if (rate > 0) {
+    if (movieIndex === -1 && rate > 0) {
       storedData.push({
-        movieId: this.movieId,
-        movieName: this.movieName,
+        movieId,
+        movieName,
         rate,
         rateDate: /* @__PURE__ */ new Date()
       });
     }
-    this.updateStorage(storedData ?? []);
+    SessionStorage.saveItems(storedData, _MovieRating.STORAGE_KEY);
   }
-  updateStorage(data) {
-    SessionStorage.saveItems(data, STORAGE_KEY);
-  }
-}
+};
+__publicField(_MovieRating, "STORAGE_KEY", "movie-ratings");
+let MovieRating = _MovieRating;
+const movieRating = new MovieRating();
 const Box = ({ classList, props }) => {
   const boxElement = createElement("div", props);
   if (classList && classList.length > 0) {
@@ -444,6 +445,9 @@ const createDateSkeleton = () => {
     }
   });
 };
+const createSkeletonItems = (count = 20) => {
+  return Array.from({ length: count }, () => MovieSkeleton());
+};
 const MovieSkeleton = () => {
   return createElement("li", {
     classList: "movie-item skeleton-item",
@@ -456,15 +460,20 @@ const MovieSkeleton = () => {
 };
 const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w220_and_h330_face";
 const DEFAULT_IMAGE_URL = "./images/no_image.png";
-const createRatingSection$1 = (vote_average) => {
+const createMovieItems = (movies) => {
+  return movies.map((movie, index) => MovieItem({ ...movie, index }));
+};
+const createRatingSection$1 = (id, vote_average) => {
+  const hasRating = movieRating.hasRating(id);
   return Box({
     classList: ["movie-rate"],
     props: {
+      "data-movie-id": id.toString(),
       children: [
         Img({
           width: "16",
           height: "16",
-          src: "./images/star_empty.png"
+          src: hasRating ? "./images/star_filled.png" : "./images/star_empty.png"
         }),
         Text({
           classList: ["text-lg", "font-semibold", "text-yellow", "mt-2"],
@@ -476,12 +485,12 @@ const createRatingSection$1 = (vote_average) => {
     }
   });
 };
-const createDescriptionSection = (title, vote_average) => {
+const createDescriptionSection = (id, title, vote_average) => {
   return Box({
     classList: ["movie-description"],
     props: {
       children: [
-        createRatingSection$1(vote_average),
+        createRatingSection$1(id, vote_average),
         Text({
           classList: ["text-xl", "font-bold"],
           props: {
@@ -509,9 +518,7 @@ const createMovieImage = (title, poster_path) => {
   const handleImageLoad = () => {
     skeletonElement.classList.add("fade-out");
     imgElement.style.visibility = "visible";
-    setTimeout(() => {
-      skeletonElement.remove();
-    }, 300);
+    requestAnimationFrame(() => skeletonElement.remove());
   };
   imgElement.addEventListener("load", handleImageLoad);
   imageContainer.append(imgElement, skeletonElement);
@@ -526,7 +533,7 @@ const MovieItem = ({
     classList: "movie-item",
     children: [
       createMovieImage(title, poster_path),
-      createDescriptionSection(title, vote_average)
+      createDescriptionSection(id, title, vote_average)
     ]
   });
   item.setAttribute("data-index", index.toString());
@@ -541,24 +548,25 @@ const MovieItem = ({
   return item;
 };
 const SCORE_TEXT = {
-  2: "최악이에요",
-  4: "별로예요",
-  6: "보통이에요",
-  8: "재미있어요",
-  10: "명작이에요"
+  2: "최악이에요.",
+  4: "별로예요.",
+  6: "보통이에요.",
+  8: "재미있어요.",
+  10: "명작이에요."
 };
 const handleCloseBtnClick = () => {
   const modalBackground = document.querySelector(".modal-background");
   modalBackground == null ? void 0 : modalBackground.classList.remove("active");
-  modalBackground == null ? void 0 : modalBackground.addEventListener("transitionend", () => {
-    modalBackground == null ? void 0 : modalBackground.remove();
-  });
+  modalBackground == null ? void 0 : modalBackground.addEventListener(
+    "transitionend",
+    () => {
+      modalBackground == null ? void 0 : modalBackground.remove();
+    },
+    { once: true }
+  );
 };
 const scoreTextElement = Text({
-  classList: ["text-xl", "font-semibold", "text-white"],
-  props: {
-    textContent: "0점"
-  }
+  classList: ["text-xl", "font-semibold", "text-white"]
 });
 const scoreElement = Text({
   classList: ["text-lg", "font-semibold", "text-opacity-blue"],
@@ -619,9 +627,8 @@ const movieInfo = (title, formattedReleaseDate, genreNames, vote_average) => {
   });
 };
 const myRatingSection = (movieId, title) => {
-  const movieRate = new MovieRating(movieId, title);
   const updateStars = (score) => {
-    movieRate.setRating(score);
+    movieRating.setRating(movieId, title, score);
     starElements.forEach((star, index) => {
       const starScore = (index + 1) * 2;
       const starImg = star.querySelector("img");
@@ -629,7 +636,7 @@ const myRatingSection = (movieId, title) => {
         starImg.src = starScore <= score ? "./images/star_filled.png" : "./images/star_empty.png";
       }
     });
-    scoreTextElement.textContent = SCORE_TEXT[score] || "0점";
+    scoreTextElement.textContent = SCORE_TEXT[score] || "별점을 남겨주세요! 🌟";
     scoreElement.textContent = `(${score}/10)`;
   };
   const starElements = Array.from({ length: 5 }, (_, index) => {
@@ -644,7 +651,7 @@ const myRatingSection = (movieId, title) => {
       }
     });
   });
-  const storedRating = movieRate.getRating();
+  const storedRating = movieRating.getRating(movieId);
   updateStars(storedRating || 0);
   return Box({
     classList: ["modal-my-rate"],
@@ -818,17 +825,7 @@ const createHeaderSection = () => {
       }),
       SearchBar({
         classList: ["search-bar"],
-        onSubmit: async (value) => {
-          const topRatedMovie = document.querySelector(".top-rated-movie");
-          const overlay = document.querySelector(".overlay");
-          const backgroundContainer = document.querySelector(
-            ".background-container"
-          );
-          topRatedMovie == null ? void 0 : topRatedMovie.replaceChildren();
-          overlay == null ? void 0 : overlay.classList.add("hidden");
-          backgroundContainer == null ? void 0 : backgroundContainer.classList.add("search-header-container");
-          await movieFetcher.getSearchMovies(1, value);
-        }
+        onSubmit: async (value) => await movieFetcher.getSearchMovies(1, value)
       })
     ]
   });
@@ -877,13 +874,19 @@ const createFeaturedMovieSection = (id, title, rate) => {
 };
 const createBackgroundContainer = (movie) => {
   const { id, title, vote_average, poster_path } = movie;
+  const isSearch = movieFetcher.isSearchState;
+  const backgroundClassList = [
+    "background-container",
+    ...isSearch ? ["search-header-container"] : []
+  ];
+  const backgroundStyle = isSearch ? "" : `background-image: url(https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${poster_path})`;
   return Box({
-    classList: ["background-container"],
+    classList: backgroundClassList,
     props: {
-      style: `background-image: url(https://image.tmdb.org/t/p/w1920_and_h800_multi_faces/${poster_path})`,
+      style: backgroundStyle,
       children: [
         Box({
-          classList: ["overlay"],
+          classList: !isSearch ? ["overlay"] : [],
           props: {
             "aria-hidden": "true"
           }
@@ -893,7 +896,7 @@ const createBackgroundContainer = (movie) => {
           props: {
             children: [
               createHeaderSection(),
-              createFeaturedMovieSection(id, title, vote_average)
+              ...isSearch ? [] : [createFeaturedMovieSection(id, title, vote_average)]
             ]
           }
         })
@@ -902,12 +905,16 @@ const createBackgroundContainer = (movie) => {
   });
 };
 const renderHeader = (headerElement) => {
-  const { isLoadingState: isLoading, movies } = movieFetcher;
+  const {
+    isLoadingState: isLoading,
+    isSearchState: isSearch,
+    movies
+  } = movieFetcher;
   const existingSkeleton = headerElement.querySelector(".skeleton-gradient");
   if (existingSkeleton) {
     existingSkeleton.remove();
   }
-  if (isLoading && movies.length === 0) {
+  if (isLoading && !isSearch && movies.length === 0) {
     headerElement.appendChild(Skeleton({ width: 1980, height: 500 }));
     headerElement.classList.add("skeleton-animation");
     return;
@@ -915,6 +922,7 @@ const renderHeader = (headerElement) => {
   if (movies.length > 0) {
     headerElement.replaceChildren(createBackgroundContainer(movies[0]));
   }
+  headerElement.classList.remove("skeleton-animation");
 };
 const Header = () => {
   var _a;
@@ -1008,20 +1016,26 @@ const Empty = () => {
     }
   });
 };
-const createSkeletonItems = (count = 20) => {
-  return Array.from({ length: count }, () => MovieSkeleton());
+let observer = null;
+const initObserver = (callback) => {
+  if (!observer) {
+    observer = new IntersectionObserver(callback, {
+      root: null,
+      rootMargin: "100px",
+      threshold: 1
+    });
+  }
 };
-const createMovieItems = (movies) => {
-  return movies.map((movie, index) => MovieItem({ ...movie, index }));
-};
-const updateListTitle = (titleElement, isSearch, query) => {
-  titleElement.textContent = isSearch ? `검색 결과: ${query}` : "지금 인기 있는 영화";
+const observeTarget = (target) => {
+  if (!observer) return;
+  observer.disconnect();
+  observer.observe(target);
 };
 const titleText = Text({
   classList: ["text-2xl", "font-bold", "mb-64"],
   props: { textContent: "지금 인기 있는 영화" }
 });
-let movieUl = createElement("ul", {
+const movieUl = createElement("ul", {
   classList: "thumbnail-list"
 });
 const sectionElement = createElement("section", {
@@ -1031,6 +1045,9 @@ const sectionElement = createElement("section", {
 const mainElement = createElement("main", {
   children: [sectionElement]
 });
+const updateListTitle = (titleElement, isSearch, query) => {
+  titleElement.textContent = isSearch ? `검색 결과: ${query}` : "지금 인기 있는 영화";
+};
 const handleMoreMovieData = async () => {
   const response = movieFetcher.currentMovieResponse;
   const hasNextPage = response.page < response.total_pages;
@@ -1046,12 +1063,8 @@ const observerCallback = async (entries) => {
 const setupIntersectionObserver = () => {
   const lastMovieItem = document.querySelector(".movie-item:last-child");
   if (!lastMovieItem) return;
-  const observer = new IntersectionObserver(observerCallback, {
-    root: null,
-    rootMargin: "100px",
-    threshold: 1
-  });
-  observer.observe(lastMovieItem);
+  observeTarget(lastMovieItem);
+  initObserver(observerCallback);
 };
 const renderMoreLoadingState = (itemCount) => {
   const skeletons = createSkeletonItems(itemCount);
@@ -1077,26 +1090,27 @@ const renderMovieList = () => {
   } = movieFetcher;
   updateListTitle(titleText, isSearch, query);
   if (error) return;
-  if (isLoading) return renderMoreLoadingState(20);
+  if (isLoading && !(isSearch && results.length === 0)) {
+    return renderMoreLoadingState(20);
+  }
   if (isSearch && results.length === 0 && !isLoading) {
     return renderEmptyState();
   }
   renderMovies(results);
   setupIntersectionObserver();
 };
-const MovieList = async () => {
+const MovieList = () => {
   const app = document.querySelector("#app");
   app == null ? void 0 : app.append(mainElement);
-  renderMoreLoadingState(20);
-  await movieFetcher.getPopularMovies(1);
+  movieFetcher.getPopularMovies(1);
   renderMovieList();
   movieFetcherEvent.subscribe(renderMovieList);
   return mainElement;
 };
-const App = async () => {
+const App = () => {
   var _a;
   Toast();
-  (_a = document.querySelector("#app")) == null ? void 0 : _a.append(Header(), await MovieList(), Footer());
+  (_a = document.querySelector("#app")) == null ? void 0 : _a.append(Header(), MovieList(), Footer());
 };
 addEventListener("load", () => {
   App();

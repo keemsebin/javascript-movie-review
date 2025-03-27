@@ -40,6 +40,7 @@ body {
 }
 
 main {
+  flex: 1;
   margin: 64px 0;
 }
 
@@ -78,7 +79,7 @@ button.primary {
 
 #app {
   width: 100vw;
-  min-width: 250px;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -179,7 +180,7 @@ footer.footer p:not(:last-child) {
 }
 
 .search-header-container {
-  background-image: none;
+  background-image: none !important;
   height: 40px;
 }
 
