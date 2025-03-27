@@ -1063,8 +1063,8 @@ const observerCallback = async (entries) => {
 const setupIntersectionObserver = () => {
   const lastMovieItem = document.querySelector(".movie-item:last-child");
   if (!lastMovieItem) return;
-  observeTarget(lastMovieItem);
   initObserver(observerCallback);
+  observeTarget(lastMovieItem);
 };
 const renderMoreLoadingState = (itemCount) => {
   const skeletons = createSkeletonItems(itemCount);
